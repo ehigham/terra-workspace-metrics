@@ -1,24 +1,28 @@
 module Main (main) where
 
-import Control.Exception                (handle)
+import Control.Monad.Catch              (handle, Exception (displayException))
 import Control.Monad.IO.Class           (liftIO)
 import Control.Monad.Trans.Resource     (runResourceT)
 import Control.Lens                     ((.~))
+import Data.Aeson                       ((.=), encode, object)
+import Data.Function                    ((&))
 import Data.Functor                     ((<&>))
 import Data.Text                        (Text)
 import Options.Applicative
-import Network.Google.Monitoring.Types  (monitoringReadScope)
-import Network.Google.Metrics           (BucketMetrics(..), getBucketMetrics)
-import System.IO                        (hPrint, stdout, stderr)
+import System.IO                        (hPutStrLn, stdout, stderr)
 import Text.Printf                      (printf)
 import Terra                            (Environment, WorkspaceName(..))
 
-import qualified Data.ByteString.UTF8         as BS
-import qualified Database.MySQL.Rawls         as Rawls
-import qualified Database.MySQL.Simple        as MySQL
-import qualified Database.MySQL.Simple.Types  as MySQL
-import qualified Database.Vault               as Vault
-import qualified Network.Google               as Google
+import qualified Data.ByteString.Lazy.UTF8          as LBS
+import qualified Data.ByteString.UTF8               as BS
+import qualified Database.MySQL.Rawls               as Rawls
+import qualified Database.MySQL.Simple              as MySQL
+import qualified Database.MySQL.Simple.Types        as MySQL
+import qualified Database.Vault                     as Vault
+import qualified Streaming.Prelude                  as S
+import qualified Network.Google                     as Google
+import qualified Network.Google.Metrics             as Google
+import qualified Network.Google.Monitoring.Types    as Google
 
 main :: IO ()
 main = execParser (info (config <**> helper) description) >>= run
@@ -34,35 +38,50 @@ run Config{..} = runResourceT $ do
 
     gEnv <- Google.newEnv
         <&> (Google.envLogger .~ glogger)
-        <&> (Google.envScopes .~ monitoringReadScope)
-
-    conn <- Rawls.openConnection connectInfo
+        <&> (Google.envScopes .~ Google.monitoringReadScope)
 
     let (query, params) = case input of
             Workspace w ->
-                (queryBase <> " AND NAMESPACE = ? AND NAME = ?",
+                (mkQuery "AND NAMESPACE = ? AND NAME = ?",
                 [namespace w, name w])
-            AllWorkspaces -> (queryBase, [])
+            AllWorkspaces -> (mkQuery "", [])
 
     liftIO $ printf "namespace,name,objectCount,totalBytes\n"
-    liftIO . MySQL.forEach conn (query <> ordering) params $
-        \(namespace, name, googleProjectId, bucketName) ->
-            let printMetrics = do
-                    BucketMetrics{..} <- runResourceT . Google.runGoogle gEnv $
-                        getBucketMetrics googleProjectId bucketName
-                    printf "%s,%s,%d,%.f\n"
-                        (namespace :: Text)
-                        (name :: Text)
-                        objectCount
-                        totalBytes
-            in handle (hPrint stderr :: Google.Error -> IO ()) printMetrics
+    runResourceT . Google.runGoogle gEnv
+        $ Rawls.stream connectInfo query params
+        & S.mapM (\r -> handle (liftIO . (*> pure Nothing) . logGoogleError r) (getMetrics r))
+        & S.catMaybes
+        & S.map formatCsv
+        & S.stdoutLn
  where
-    queryBase, ordering :: MySQL.Query
-    queryBase = MySQL.Query . BS.fromString $ unwords
+    mkQuery :: String -> MySQL.Query
+    mkQuery params = MySQL.Query . BS.fromString . unwords $ filter (not . null)
         [ "SELECT NAMESPACE,NAME,GOOGLE_PROJECT_ID,BUCKET_NAME FROM WORKSPACE"
         , "WHERE WORKSPACE_TYPE = 'rawls'"
+        , params
+        , "ORDER BY NAMESPACE, NAME"
         ]
-    ordering = " ORDER BY NAMESPACE, NAME"
+
+    logGoogleError :: (Text, Text, Google.ProjectId, Google.BucketName) -> Google.Error -> IO ()
+    logGoogleError (namespace, name, project, bucket) err =
+        hPutStrLn stderr . LBS.toString . encode $ object
+            [ "namespace" .= namespace
+            , "name" .= name
+            , "project" .= project
+            , "bucket" .= bucket
+            , "error" .= displayException err
+            ]
+
+    getMetrics (namespace, name, project, bucket) =
+        Google.getBucketMetrics project bucket
+            <&> liftA2 ((Just .) . (namespace, name,,)) Google.objectCount Google.totalBytes
+
+    formatCsv (namespace, name, objectCount, totalBytes) =
+        printf "%s,%s,%d,%.f"
+            (namespace :: Text)
+            (name :: Text)
+            objectCount
+            totalBytes
 
 
 data Configuration = Config
@@ -73,7 +92,7 @@ data Configuration = Config
     deriving stock Show
 
 
-data Input = Workspace WorkspaceName
+data Input = Workspace !WorkspaceName
            | AllWorkspaces
     deriving stock Show
 

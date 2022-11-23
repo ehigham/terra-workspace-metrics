@@ -1,13 +1,15 @@
 module Network.Google.Metrics
     ( getBucketMetrics
     , BucketMetrics(..)
-    , GoogleProjectId
+    , ProjectId
     , BucketName
     ) where
+
 
 import Control.Lens                 (Lens', (&), (?~), set, view)
 import Control.Monad                ((>=>))
 import Control.Monad.IO.Class
+import Data.Aeson                   (ToJSON, FromJSON)
 import Data.Coerce
 import Data.Functor.Of
 import Data.Int
@@ -27,7 +29,7 @@ import qualified Streaming.Prelude as S
 
 
 getBucketMetrics :: (HasScope s ProjectsTimeSeriesList, MonadGoogle s m)
-    => GoogleProjectId
+    => ProjectId
     -> BucketName
     -> m BucketMetrics
 getBucketMetrics projectId bucketName =
@@ -52,10 +54,10 @@ getBucketMetrics projectId bucketName =
 
 sumFirstTimeSeriesPoints ::
     ( Num a
-    , HasScope s ProjectsTimeSeriesList
     , MonadGoogle s m
+    , HasScope s ProjectsTimeSeriesList
     )
-    => GoogleProjectId
+    => ProjectId
     -> BucketName
     -> MetricType a
     -> m a
@@ -80,7 +82,7 @@ sumFirstTimeSeriesPoints projectId bucketName MetricType{..} =
     addSeconds s time = addUTCTime (fromIntegral s) time
 
 
-stream :: (HasScope s ProjectsTimeSeriesList, MonadGoogle s m)
+stream :: (MonadGoogle s m, HasScope s ProjectsTimeSeriesList)
     => ProjectsTimeSeriesList
     -> Stream (Of TimeSeries) m ()
 stream request = do
@@ -107,7 +109,7 @@ data MetricType a = MetricType
 
 
 -- | Id of a Google Cloud Project
-newtype GoogleProjectId = GoogleProjectId Text
+newtype ProjectId = ProjectId Text
     deriving stock (Generic)
     deriving newtype
         ( Eq
@@ -116,6 +118,8 @@ newtype GoogleProjectId = GoogleProjectId Text
         , Read
         , IsString
         , Result
+        , ToJSON
+        , FromJSON
         )
 
 -- | Name of a Google Cloud Storage Bucket
@@ -128,4 +132,6 @@ newtype BucketName = BucketName Text
         , Read
         , IsString
         , Result
+        , ToJSON
+        , FromJSON
         )

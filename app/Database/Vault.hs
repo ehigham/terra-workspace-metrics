@@ -5,6 +5,7 @@ module Database.Vault
     )
      where
 
+
 import Database.Vault.Class
 import Database.Vault.Env
 import Database.Vault.Types

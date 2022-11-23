@@ -1,10 +1,14 @@
 {-# LANGUAGE InstanceSigs #-}
 module Database.MySQL.Rawls
     ( localRawlsConnectInfo
-    , openConnection
     , readRawlsConnectInfo
+    , stream
     ) where
 
+import Control.Exception                       (bracket)
+import Control.Monad                           ((>=>))
+import Control.Monad.IO.Class                  (MonadIO, liftIO)
+import Control.Monad.Trans.Resource            (MonadResource, allocate)
 import Data.Aeson
     ( (.:)
     , FromJSON
@@ -13,10 +17,7 @@ import Data.Aeson
     , withObject
     )
 import Data.Aeson.Types                        (Parser)
-import Control.Monad.Trans.Resource            (MonadResource, allocate)
-import Control.Monad                           ((>=>))
 import Data.String.Interpolate                 (i)
-import qualified Database.MySQL.Base as MySQL
 import Database.Vault.Class                    (MonadVault)
 import Database.Vault.KVv1                     (readSecret)
 import System.Directory                        (removeFile, removeDirectory)
@@ -26,6 +27,13 @@ import System.IO.Temp
     , getCanonicalTemporaryDirectory
     )
 import Terra                                    (Environment)
+
+
+import qualified Database.MySQL.Base                as MySQL hiding (query)
+import qualified Database.MySQL.Simple              as MySQL
+import qualified Database.MySQL.Simple.QueryParams  as MySQL
+import qualified Database.MySQL.Simple.QueryResults as MySQL
+import qualified Streaming.Prelude                  as S
 
 
 localRawlsConnectInfo :: MySQL.ConnectInfo
@@ -39,10 +47,22 @@ localRawlsConnectInfo = MySQL.defaultConnectInfo
     }
 
 
-openConnection :: (MonadResource m)
+stream :: (MySQL.QueryParams p, MySQL.QueryResults r, MonadIO m)
     => MySQL.ConnectInfo
-    -> m MySQL.Connection
-openConnection info = snd <$> allocate (MySQL.connect info) MySQL.close
+    -> MySQL.Query
+    -> p
+    -> S.Stream (S.Of r) m ()
+stream connectInfo query params = go (1 :: Int)
+  where
+    go n = do
+        results <- liftIO $ bracket
+            (MySQL.connect connectInfo)
+            MySQL.close
+            (\conn -> MySQL.query conn (getPage n) params)
+        S.each results <> if null results then mempty else go (n + 1)
+
+    getPage n = query <> [i| LIMIT #{(n - 1) * pageSize}, #{pageSize}|]
+    pageSize = 25 :: Int
 
 
 readRawlsConnectInfo :: (MonadResource m, MonadVault m)

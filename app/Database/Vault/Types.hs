@@ -2,6 +2,7 @@ module Database.Vault.Types
     ( SecretPath(..)
     ) where
 
+
 import Data.String                      (IsString)
 import Data.Text                        (Text)
 import GHC.Generics                     (Generic)
