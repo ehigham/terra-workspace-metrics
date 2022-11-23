@@ -48,13 +48,13 @@ run Config{..} = runResourceT $ do
     liftIO . MySQL.forEach conn (query <> ordering) params $
         \(namespace, name, googleProjectId, bucketName) ->
             let printMetrics = do
-                BucketMetrics{..} <- runResourceT . Google.runGoogle gEnv $
-                    getBucketMetrics googleProjectId bucketName
-                printf "%s,%s,%d,%.f\n"
-                    (namespace :: Text)
-                    (name :: Text)
-                    objectCount
-                    totalBytes
+                    BucketMetrics{..} <- runResourceT . Google.runGoogle gEnv $
+                        getBucketMetrics googleProjectId bucketName
+                    printf "%s,%s,%d,%.f\n"
+                        (namespace :: Text)
+                        (name :: Text)
+                        objectCount
+                        totalBytes
             in handle (hPrint stderr :: Google.Error -> IO ()) printMetrics
  where
     queryBase, ordering :: MySQL.Query

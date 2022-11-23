@@ -1,4 +1,4 @@
-module Network.Google.GcpMetrics
+module Network.Google.Metrics
     ( getBucketMetrics
     , BucketMetrics(..)
     , GoogleProjectId
