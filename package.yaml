@@ -1,0 +1,75 @@
+name:                terra-workspace-metrics
+version:             0.1.0.0
+github:              "ehigham/terra-workspace-metrics"
+license:             BSD3
+author:              "Edmund Higham"
+maintainer:          "edhigham@gmail.com"
+copyright:           "2022 Edmund Higham"
+
+extra-source-files:
+- README.md
+- CHANGELOG.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/ehigham/terra-workspace-metrics#readme>
+
+dependencies:
+- aeson
+- base >= 4.7 && < 5
+- directory
+- exceptions
+- gogol
+- gogol-monitoring
+- http-conduit
+- http-types
+- lens
+- mtl
+- mysql
+- mysql-simple
+- optparse-applicative
+- resourcet
+- streaming
+- string-interpolate
+- temporary
+- text
+- time
+- utf8-string
+- unliftio-core
+- uuid
+
+ghc-options:
+- -Weverything
+- -Wno-implicit-prelude
+- -Wno-missing-import-lists
+- -Wno-missing-local-signatures
+- -Wno-unsafe
+
+default-extensions:
+- DataKinds
+- DeriveGeneric
+- DerivingStrategies
+- DuplicateRecordFields
+- GeneralizedNewtypeDeriving
+- KindSignatures
+- OverloadedStrings
+- RankNTypes
+- RecordWildCards
+- TupleSections
+- TypeFamilies
+- QuasiQuotes
+
+executables:
+  terra-workspace-metrics:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -O2

@@ -1,0 +1,77 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.35.0.
+--
+-- see: https://github.com/sol/hpack
+
+name:           terra-workspace-metrics
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/ehigham/terra-workspace-metrics#readme>
+homepage:       https://github.com/ehigham/terra-workspace-metrics#readme
+bug-reports:    https://github.com/ehigham/terra-workspace-metrics/issues
+author:         Edmund Higham
+maintainer:     edhigham@gmail.com
+copyright:      2022 Edmund Higham
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    CHANGELOG.md
+
+source-repository head
+  type: git
+  location: https://github.com/ehigham/terra-workspace-metrics
+
+executable terra-workspace-metrics
+  main-is: Main.hs
+  other-modules:
+      Database.MySQL.Rawls
+      Database.Vault
+      Database.Vault.Class
+      Database.Vault.Env
+      Database.Vault.KVv1
+      Database.Vault.Types
+      Network.Google.Metrics
+      Terra
+      Paths_terra_workspace_metrics
+  hs-source-dirs:
+      app
+  default-extensions:
+      DataKinds
+      DeriveGeneric
+      DerivingStrategies
+      DuplicateRecordFields
+      GeneralizedNewtypeDeriving
+      KindSignatures
+      OverloadedStrings
+      RankNTypes
+      RecordWildCards
+      TupleSections
+      TypeFamilies
+      QuasiQuotes
+  ghc-options: -Weverything -Wno-implicit-prelude -Wno-missing-import-lists -Wno-missing-local-signatures -Wno-unsafe -threaded -rtsopts -with-rtsopts=-N -O2
+  build-depends:
+      aeson
+    , base >=4.7 && <5
+    , directory
+    , exceptions
+    , gogol
+    , gogol-monitoring
+    , http-conduit
+    , http-types
+    , lens
+    , mtl
+    , mysql
+    , mysql-simple
+    , optparse-applicative
+    , resourcet
+    , streaming
+    , string-interpolate
+    , temporary
+    , text
+    , time
+    , unliftio-core
+    , utf8-string
+    , uuid
+  default-language: Haskell2010
