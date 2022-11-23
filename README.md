@@ -1,6 +1,5 @@
 # terra-bucket-metrics
-Get Google Cloud Storage buccket metrics for buckets associated with Terra
-workspaces.
+Print Google Cloud Storage metrics for buckets associated with Terra workspaces.
 
 The following metrics are supported:
 - storage.googleapis.com/storage/object_count
