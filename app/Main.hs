@@ -29,6 +29,8 @@ main = execParser (info (config <**> helper) description) >>= run
 
 run :: Configuration -> IO ()
 run Config{..} = runResourceT $ do
+    -- The vault environment encodes all we need to connect to a
+    -- hashicorp vault server.
     vEnv <- Vault.newEnv
     connectInfo <- Vault.runVault vEnv (Rawls.readRawlsConnectInfo environment)
 
@@ -36,6 +38,10 @@ run Config{..} = runResourceT $ do
         Normal -> Google.Info
         Verbose -> Google.Debug
 
+    -- The google environment encodes the scopes and credentials used to call
+    -- Google APIs, as well as how we log those requests. Incidently, gogol
+    -- logging is fantastic (relative to JVM ecoystems) - one only wishes
+    -- gogol's `logger` internals  where exposed.
     gEnv <- Google.newEnv
         <&> (Google.envLogger .~ glogger)
         <&> (Google.envScopes .~ Google.monitoringReadScope)
