@@ -35,7 +35,8 @@ import qualified Database.MySQL.Simple.QueryParams  as MySQL
 import qualified Database.MySQL.Simple.QueryResults as MySQL
 import qualified Streaming.Prelude                  as S
 
-
+-- | See https://github.com/broadinstitute/rawls
+-- Useful for connecting to a local Rawls databaese for testing
 localRawlsConnectInfo :: MySQL.ConnectInfo
 localRawlsConnectInfo = MySQL.defaultConnectInfo
     { MySQL.connectHost = "127.0.0.1"
@@ -46,7 +47,7 @@ localRawlsConnectInfo = MySQL.defaultConnectInfo
     , MySQL.connectSSL = Nothing
     }
 
-
+-- | Steam the results of the `Query` with `QueryParams`
 stream :: (MySQL.QueryParams p, MySQL.QueryResults r, MonadIO m)
     => MySQL.ConnectInfo
     -> MySQL.Query
@@ -54,6 +55,13 @@ stream :: (MySQL.QueryParams p, MySQL.QueryResults r, MonadIO m)
     -> S.Stream (S.Of r) m ()
 stream connectInfo query params = go (1 :: Int)
   where
+    -- ideally we'd take a MySQL.Connection and reconnect when necessary but
+    -- neither mysql or mysql-simple exposes this functionality. Neither can we
+    -- use mydql-hdbc - that doesn't allow ssl config options. To use a
+    -- technical term, we're buggered.
+    -- That said, we could maximise this `MySQL.Connection` by reconnecting when
+    -- a related exception error is thrown. We could prhaps use a connection
+    -- pool and not create ad-hoc connections?
     go n = do
         results <- liftIO $ bracket
             (MySQL.connect connectInfo)
@@ -65,6 +73,8 @@ stream connectInfo query params = go (1 :: Int)
     pageSize = 25 :: Int
 
 
+-- Use `MonadResource` as we need to dump SSL info into temporary files
+-- when `runResourceT` is run, these files will be cleaned up.
 readRawlsConnectInfo :: (MonadResource m, MonadVault m)
     => Environment
     -> m MySQL.ConnectInfo

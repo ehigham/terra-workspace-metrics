@@ -70,10 +70,17 @@ sumFirstTimeSeriesPoints projectId bucketName MetricType{..} =
 
     streamTimeSeries = do
         endTime <- liftIO getCurrentTime
+        -- An interesting "feature" of google monitoring requests - the
+        -- timeSeries startTime defaults to the endTime so we need to request
+        -- the interval (now - sampleTime, now] explicitly to guarantee at
+        -- least one sample (if these metrics are enabled, of course).
         let startTime = addSeconds (negate sampleRate) endTime
         stream $ projectsTimeSeriesList [i|projects/#{coerce projectId :: Text}|]
                & ptslIntervalStartTime ?~ startTime
                & ptslIntervalEndTime ?~ endTime
+               -- filtering by the workspace bucket name explude sother buckets
+               -- in the google project like the stoage logs bucket or other
+               -- leonardo-related buckets.
                & ptslFilter ?~ [iii|
                     metric.type="#{metricName}"
                     AND resource.labels.bucket_name="#{coerce bucketName :: Text}"
@@ -81,7 +88,8 @@ sumFirstTimeSeriesPoints projectId bucketName MetricType{..} =
 
     addSeconds s time = addUTCTime (fromIntegral s) time
 
-
+-- Google paginates their responses like sensible peopple - hide fetching the
+-- next page behind the `Stream` interface.
 stream :: (MonadGoogle s m, HasScope s ProjectsTimeSeriesList)
     => ProjectsTimeSeriesList
     -> Stream (Of TimeSeries) m ()
@@ -93,14 +101,17 @@ stream request = do
             (\token -> stream $ set ptslPageToken (Just token) request)
             (view ltsrNextPageToken response)
 
-
 data BucketMetrics = BucketMetrics
     { objectCount :: !Int64
     , totalBytes :: !Double
     }
     deriving stock (Eq, Ord, Show, Read)
 
-
+-- | The timeSeries we support (like total_butes or object_count) can be
+-- aggregated according to storage class. Perhaps this is a common trait between
+-- them - we're only interested in the latest data point for each storage class
+-- and we want to aggregate these. It'll br noce to understand more use cases
+-- and remove this record.
 data MetricType a = MetricType
     { metricName :: !Text
     , sampleRate :: !Seconds
