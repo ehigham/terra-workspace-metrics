@@ -40,9 +40,9 @@ $ terra-workspace-metrics --help
 Note:
 - You need to define the `VAULT_ADDR` environment variable in the form
 `https://hostname:port` and have a valid vault token at `$HOME/.vault-token`.
-- When scrutinising all workspaces in a particualr envonmetns (via `--all`) you
-should use service account credentials instead of your own. `curl` down these
-service account credentials and run the program this way:
+- When scrutinising all workspaces in a particluar environment (via `--all`),
+you should use service account credentials instead of your own. `curl` down
+these service account credentials and run the program this way:
 
 ```
 $ GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json terra-workspace-metrics -e ENVIRONMENT --all
