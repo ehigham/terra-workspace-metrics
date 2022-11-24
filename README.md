@@ -45,5 +45,5 @@ should use service account credentials instead of your own. `curl` down these
 service account credentials and run the program this way:
 
 ```
-$ GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json terra-workspace-metrics ENVIRONMENT --all
+$ GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json terra-workspace-metrics -e ENVIRONMENT --all
 ```
