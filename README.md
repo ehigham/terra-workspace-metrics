@@ -22,8 +22,9 @@ and follow the instructions to install the recommended stack and cabal binaries.
 ## Building
 After you've cloned this repository and installed `stack`, `cd` into
 `terra-bucket-metrics` and run
-
-    $ stack build
+```
+$ stack build
+```
 
 This will install a compatible version of GHC (the Glasgow Haskell Compiler),
 fetch and build dependencies and then compile the program. Optionally, you can
@@ -32,8 +33,17 @@ run `stack install` afterwards to install the binary to your local bin path
 
 ## Usage
 See output of
+```
+$ terra-workspace-metrics --help
+```
 
-    $ terra-workspace-metrics --help
-
-Note: You need to define the `VAULT_ADDR` environment variable in the form
+Note:
+- You need to define the `VAULT_ADDR` environment variable in the form
 `https://hostname:port` and have a valid vault token at `$HOME/.vault-token`.
+- When scrutinising all workspaces in a particualr envonmetns (via `--all`) you
+should use service account credentials instead of your own. `curl` down these
+service account credentials and run the program this way:
+
+```
+$ GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json terra-workspace-metrics ENVIRONMENT --all
+```
