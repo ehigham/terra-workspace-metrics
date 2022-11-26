@@ -85,7 +85,7 @@ sumFirstTimeSeriesPoints projectId bucketName MetricType{..} =
                     AND resource.labels.bucket_name="#{coerce bucketName :: Text}"
                 |]
 
-    addSeconds s time = addUTCTime (fromIntegral s) time
+    addSeconds s = addUTCTime (fromIntegral s)
 
 -- Google paginates their responses. Use `Stream` to hide fetching subsequent pages.
 stream :: (MonadGoogle s m, HasScope s ProjectsTimeSeriesList)
