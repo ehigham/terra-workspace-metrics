@@ -70,16 +70,15 @@ sumFirstTimeSeriesPoints projectId bucketName MetricType{..} =
 
     streamTimeSeries = do
         endTime <- liftIO getCurrentTime
-        -- An interesting "feature" of google monitoring requests - the
-        -- timeSeries startTime defaults to the endTime so we need to request
-        -- the interval (now - sampleTime, now] explicitly to guarantee at
-        -- least one sample (if these metrics are enabled, of course).
+        -- The timeSeries startTime defaults to the endTime so we need to
+        -- request the interval (now - sampleTime, now] explicitly to guarantee
+        -- at least one sample (if these metrics are enabled, of course).
         let startTime = addSeconds (negate sampleRate) endTime
         stream $ projectsTimeSeriesList [i|projects/#{coerce projectId :: Text}|]
                & ptslIntervalStartTime ?~ startTime
                & ptslIntervalEndTime ?~ endTime
-               -- filtering by the workspace bucket name explude sother buckets
-               -- in the google project like the stoage logs bucket or other
+               -- filtering by the workspace bucket name excldues other buckets
+               -- in the google project like the storage logs bucket or other
                -- leonardo-related buckets.
                & ptslFilter ?~ [iii|
                     metric.type="#{metricName}"
@@ -88,8 +87,7 @@ sumFirstTimeSeriesPoints projectId bucketName MetricType{..} =
 
     addSeconds s time = addUTCTime (fromIntegral s) time
 
--- Google paginates their responses like sensible peopple - hide fetching the
--- next page behind the `Stream` interface.
+-- Google paginates their responses. Use `Stream` to hide fetching subsequent pages.
 stream :: (MonadGoogle s m, HasScope s ProjectsTimeSeriesList)
     => ProjectsTimeSeriesList
     -> Stream (Of TimeSeries) m ()
