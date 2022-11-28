@@ -1,7 +1,7 @@
 module Main (main) where
 
 import Control.Monad.Catch              (handle, Exception (displayException))
-import Control.Monad.IO.Class           (liftIO)
+import Control.Monad.IO.Class           (MonadIO, liftIO)
 import Control.Monad.Trans.Resource     (runResourceT)
 import Control.Lens                     ((.~))
 import Data.Aeson                       ((.=), encode, object)
@@ -39,9 +39,7 @@ run Config{..} = runResourceT $ do
         Verbose -> Google.Debug
 
     -- The google environment encodes the scopes and credentials used to call
-    -- Google APIs, as well as how we log those requests. Incidently, gogol
-    -- logging is fantastic (relative to JVM ecoystems) - one only wishes
-    -- gogol's `logger` internals  where exposed.
+    -- Google APIs, as well as how we log those requests.
     gEnv <- Google.newEnv
         <&> (Google.envLogger .~ glogger)
         <&> (Google.envScopes .~ Google.monitoringReadScope)
@@ -55,7 +53,11 @@ run Config{..} = runResourceT $ do
     liftIO $ printf "namespace,name,objectCount,totalBytes\n"
     runResourceT . Google.runGoogle gEnv
         $ Rawls.stream connectInfo query params
-        & S.mapM (\r -> handle (liftIO . (*> pure Nothing) . logGoogleError r) (getMetrics r))
+        -- Expect some requests to fail when the google project doesn't exist.
+        -- When they fail, log the error with some useful context and return
+        -- `Nothing` so we can filter for `Just` the metrics from successful
+        -- requests
+        & S.mapM (\r -> handle ((*> pure Nothing) . logGoogleError r) (Just <$> getMetrics r))
         & S.catMaybes
         & S.map formatCsv
         & S.stdoutLn
@@ -68,9 +70,9 @@ run Config{..} = runResourceT $ do
         , "ORDER BY NAMESPACE, NAME"
         ]
 
-    logGoogleError :: (Text, Text, Google.ProjectId, Google.BucketName) -> Google.Error -> IO ()
+    logGoogleError :: MonadIO m => (Text, Text, Google.ProjectId, Google.BucketName) -> Google.Error -> m ()
     logGoogleError (namespace, name, project, bucket) err =
-        hPutStrLn stderr . LBS.toString . encode $ object
+        liftIO . hPutStrLn stderr . LBS.toString . encode $ object
             [ "namespace" .= namespace
             , "name" .= name
             , "project" .= project
@@ -80,7 +82,7 @@ run Config{..} = runResourceT $ do
 
     getMetrics (namespace, name, project, bucket) =
         Google.getBucketMetrics project bucket
-            <&> liftA2 ((Just .) . (namespace, name,,)) Google.objectCount Google.totalBytes
+            <&> liftA2 (namespace, name,,) Google.objectCount Google.totalBytes
 
     formatCsv (namespace, name, objectCount, totalBytes) =
         printf "%s,%s,%d,%.f"
