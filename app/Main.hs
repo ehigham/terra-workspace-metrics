@@ -53,10 +53,11 @@ run Config{..} = runResourceT $ do
     liftIO $ printf "namespace,name,objectCount,totalBytes\n"
     runResourceT . Google.runGoogle gEnv
         $ Rawls.stream connectInfo query params
-        -- Expect some requests to fail when the google project doesn't exist.
-        -- When they fail, log the error with some useful context and return
-        -- `Nothing` so we can filter for `Just` the metrics from successful
-        -- requests
+        -- The Rawls database is out-of-date with respect to the state of
+        -- workspaces' google resources. Some requests will fail as the google
+        -- project doesn't exist anymore. When they do, log the error with some
+        -- useful context and return `Nothing` so we can filter for `Just` the
+        -- metrics from successful requests.
         & S.mapM (\r -> handle ((*> pure Nothing) . logGoogleError r) (Just <$> getMetrics r))
         & S.catMaybes
         & S.map formatCsv
@@ -70,7 +71,10 @@ run Config{..} = runResourceT $ do
         , "ORDER BY NAMESPACE, NAME"
         ]
 
-    logGoogleError :: MonadIO m => (Text, Text, Google.ProjectId, Google.BucketName) -> Google.Error -> m ()
+    logGoogleError :: MonadIO m =>
+        (Text, Text, Google.ProjectId, Google.BucketName)
+        -> Google.Error
+        -> m ()
     logGoogleError (namespace, name, project, bucket) err =
         liftIO . hPutStrLn stderr . LBS.toString . encode $ object
             [ "namespace" .= namespace
