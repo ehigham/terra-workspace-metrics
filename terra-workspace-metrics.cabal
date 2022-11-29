@@ -50,7 +50,7 @@ executable terra-workspace-metrics
       TupleSections
       TypeFamilies
       QuasiQuotes
-  ghc-options: -Weverything -Wno-implicit-prelude -Wno-missing-import-lists -Wno-missing-local-signatures -Wno-unsafe -threaded -rtsopts -with-rtsopts=-N -O2
+  ghc-options: -Weverything -Wno-implicit-prelude -Wno-all-missed-specialisations -Wno-missing-import-lists -Wno-missing-local-signatures -Wno-unsafe -threaded -rtsopts -with-rtsopts=-N -O2
   build-depends:
       aeson
     , base >=4.7 && <5

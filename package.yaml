@@ -46,6 +46,7 @@ dependencies:
 ghc-options:
 - -Weverything
 - -Wno-implicit-prelude
+- -Wno-all-missed-specialisations
 - -Wno-missing-import-lists
 - -Wno-missing-local-signatures
 - -Wno-unsafe

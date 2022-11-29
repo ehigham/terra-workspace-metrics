@@ -4,7 +4,7 @@ import Control.Monad.Catch              (handle, Exception (displayException))
 import Control.Monad.IO.Class           (MonadIO, liftIO)
 import Control.Monad.Trans.Resource     (runResourceT)
 import Control.Lens                     ((.~))
-import Data.Aeson                       ((.=), encode, object)
+import Data.Aeson                       ((.=))
 import Data.Function                    ((&))
 import Data.Functor                     ((<&>))
 import Data.Text                        (Text)
@@ -13,10 +13,10 @@ import System.IO                        (hPutStrLn, stdout, stderr)
 import Text.Printf                      (printf)
 import Terra                            (Environment, WorkspaceName(..))
 
+import qualified Data.Aeson                         as Aeson
 import qualified Data.ByteString.Lazy.UTF8          as LBS
 import qualified Data.ByteString.UTF8               as BS
 import qualified Database.MySQL.Rawls               as Rawls
-import qualified Database.MySQL.Simple              as MySQL
 import qualified Database.MySQL.Simple.Types        as MySQL
 import qualified Database.Vault                     as Vault
 import qualified Streaming.Prelude                  as S
@@ -40,6 +40,8 @@ run Config{..} = runResourceT $ do
 
     -- The google environment encodes the scopes and credentials used to call
     -- Google APIs, as well as how we log those requests.
+    -- We only need `monitoringReadScope` since we're just reading cloud
+    -- monitoring time series.
     gEnv <- Google.newEnv
         <&> (Google.envLogger .~ glogger)
         <&> (Google.envScopes .~ Google.monitoringReadScope)
@@ -63,7 +65,6 @@ run Config{..} = runResourceT $ do
         & S.map formatCsv
         & S.stdoutLn
  where
-    mkQuery :: String -> MySQL.Query
     mkQuery params = MySQL.Query . BS.fromString . unwords $ filter (not . null)
         [ "SELECT NAMESPACE,NAME,GOOGLE_PROJECT_ID,BUCKET_NAME FROM WORKSPACE"
         , "WHERE WORKSPACE_TYPE = 'rawls'"
@@ -76,13 +77,13 @@ run Config{..} = runResourceT $ do
         -> Google.Error
         -> m ()
     logGoogleError (namespace, name, project, bucket) err =
-        liftIO . hPutStrLn stderr . LBS.toString . encode $ object
-            [ "namespace" .= namespace
-            , "name" .= name
-            , "project" .= project
-            , "bucket" .= bucket
-            , "error" .= displayException err
-            ]
+        liftIO . hPutStrLn stderr . LBS.toString . Aeson.encode $
+            Aeson.object [ "namespace" .= namespace
+                         , "name" .= name
+                         , "project" .= project
+                         , "bucket" .= bucket
+                         , "error" .= displayException err
+                         ]
 
     getMetrics (namespace, name, project, bucket) =
         Google.getBucketMetrics project bucket
